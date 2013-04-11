@@ -1,0 +1,42 @@
+declare shader
+	struct {
+		scalar		"displacement",
+		vector		"displacementVector",
+		vector		"normal",
+		scalar		"jminus",
+		scalar		"jplus",
+		vector		"eminus",
+		vector		"eplus" 
+		
+	} "hotOcean" (
+		scalar  "globalScale" default 1,		#:  min 0.0001 softmax 10 #global scale factor
+		integer "resolution" default 6,			#:  min 4 max 11 #grid aufloesung
+		scalar  "size"  default 200,			#:  min 1 softmax 1000 # The grid mentiond above is computed for and applied to the input geometry in tiles of this siz
+		scalar  "windSpeed" default 30,			#:  softmin 0 softmax 100 # Wind Speed - Affects the shape of the waves, "Windspeed (m/s)"
+		scalar  "waveHeigth" default 1,			#:  min 0 softmax 20     # The waves are generated to range in the [-1,1] range, this scales it to the desired height
+		scalar  "shortestWave" default 1,		#:  min 0.02 softmax 20     # Shortest Wavelength(m)
+		scalar  "choppiness" default 1,			#:  min 0 max 1     # Choppyness - scales the chop displacement, you will need to play with thil to ensure the waves are't self intersecting
+		scalar  "windDirection" default 0,		#:  min 0 max 360     # Wind direction in degrees
+		scalar  "dampReflections" default 0,	#:  min 0 max 1     # Damp reflections - In a “fully developed” ocean you will have waves travelling in both the forward and backwards directions. This parameter damps out the negative direcion waves.
+		scalar  "windAlign" default 1,			#:  min 1 max 10     # Wind Alignment - Controls how closely the waves travel in the direction of the wind.
+		scalar  "oceanDepth" default 200,		#:  min 0.01 softmax 3000   # Ocean Depth - Affects the spectrum of waves generated. Visually in doesn’t seem to have that great an influence.
+		scalar  "time" default 0,				#:  softmin 0 softmax 100 # connect to time 
+		integer "seed" default 123,				#:  min 0 softmax 9999   # Seed - Seeds the random number generator. 
+		integer "texturespace" default 0,		#:  min 0 max 1 enum "worldspace:objectspace"	
+		vector	"inDisplacement" 
+	
+		)
+		 
+	version 1  
+	apply material
+end declare
+
+declare shader
+	scalar "nr_vectorDisplace" (			
+			scalar "factor" default 1, #: softmin -10 softmax 10	
+			color "displacement"
+			
+		)
+	apply displace		
+	version 1
+end declare
