@@ -1,0 +1,15 @@
+The ocean shader consists of two nodes:
+bs_Ocean:
+	A vector displacement shader generates the ocean waves.
+bs_oceanFoamMask:
+	A float output shader, outputs Black/White mask at the places where the foam and splashes should be
+	emitted from.
+
+Known issues:
+	* Only one instance of the two shader can be found in the same scene! Adding two bs_Ocean will cause
+	  Render crash at the end of the frame rendering "when reach AiEnd()".
+
+
+*Mods by John C.  (redpawFX) 
+	Modified to put both shaders into one compile, added  fairly generic linux makeFile and fixed some  naming conflicts.
+	  

@@ -1,0 +1,27 @@
+# oceanFaom                    0x001139999
+
+[node bs_oceanFoam]
+    maya.name               STRING  "aiBS_OceanFoamMask"
+    maya.id                 INT     0x001139999
+    maya.classification     STRING  "shader/surface"
+
+    maya.output_name        STRING  "foamMask"
+    maya.output_shortname   STRING  "foam"
+    
+    maya.foamThreshold		FLOAT 	1.5
+    maya.foamOffset		FLOAT 	0.0
+    maya.globalScale		FLOAT 	1.0
+    maya.resolution		INT 	8
+    maya.size			INT 	200
+    maya.windSpeed		FLOAT 	30
+    maya.waveHeigth		FLOAT	1.0
+    maya.shortestWave		FLOAT	0.02
+    maya.choppiness		FLOAT	0.8
+    maya.windDirection		FLOAT	0.0
+    maya.dampReflections	FLOAT	0.5
+    maya.windAlign		FLOAT	2.0
+    maya.oceanDepth		FLOAT	200.0
+    maya.time			FLOAT	0.0
+    maya.seed			INT	0
+    maya.inDisplacement		VECTOR	0 0 0
+
