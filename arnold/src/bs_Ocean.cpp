@@ -80,20 +80,38 @@ mtoaOcean::~mtoaOcean()
     }
 }
 
+bool SetRefererencePoints(AtShaderGlobals *sg, AtPoint &tmpPts)
+{
+   AtPoint Pref;
+   bool usePref = AiUDataGetPnt("Pref",&Pref);
+   if (usePref)
+   {
+      tmpPts = sg->P;
+      sg->P = Pref;
+      return true;
+   }
+   return false;
+}
+
+void RestorePoints(AtShaderGlobals *sg, AtPoint tmpPts)
+{
+   sg->P = tmpPts;
+}
+
 shader_evaluate
 {
     AtParamValue *params = AiNodeGetParams(node);
          
     AtPoint P;
+
+	AtPoint tmpPts;
+   	bool usePref = SetRefererencePoints(sg, tmpPts);
     
     AtVector disp;
     AtFloat jminus;
     AtFloat jplus;
     AtVector eminus;
     AtVector eplus;
-
-
-
     
     P = sg->P;
 
@@ -105,6 +123,7 @@ shader_evaluate
     disp.z = evaldata.disp[2] * _globalScale + _inDisplacement.z;
     
     sg->out.VEC = disp;
+	if (usePref) RestorePoints(sg, tmpPts);
 }
 
 node_initialize
