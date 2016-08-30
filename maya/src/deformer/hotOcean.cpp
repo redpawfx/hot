@@ -3,7 +3,7 @@
 		@file		hotOcean.cpp
 		@since		2012-10-26
 
-		@author		Nico Rehberg, Imre Tuske
+		@author		Nico Rehberg, Imre Tuske,  John Cassella (mods) 
 
 		@brief		Maya deformer to displace a surface using Houdini Ocean Toolkit (implementation).
 
@@ -74,7 +74,6 @@ hotOceanDeformer::hotOceanDeformer()
 }
 
 
-
 hotOceanDeformer::~hotOceanDeformer()
 {
 	if (_ocean) {
@@ -85,7 +84,6 @@ hotOceanDeformer::~hotOceanDeformer()
 		delete _ocean_context;
 	}
 }
-
 
 
 /**	Attribute initialization.
@@ -299,17 +297,383 @@ MStatus hotOceanDeformer::setDependentsDirty(
 
 
 
-/*
-MStatus hotOceanDeformer::deform( MDataBlock& block,
-	MItGeometry& iter,
-	const MMatrix& worldSpace,
-	unsigned int multiIndex )
+
+MStatus hotOceanDeformer::deform( MDataBlock& block, MItGeometry& iter, const MMatrix& worldSpace, 	unsigned int multiIndex )
 {
+	#define CHK(msg) if ( MS::kSuccess!=status ) { throw(msg); }
+	MStatus			status;
+
+	MFnDependencyNode	this_dnode(thisMObject(), &status);
+	MString		dnode_name = this_dnode.name(), FN_dnode = dnode_name+": ";
+
+	// FIRST !!!
+	// Check to make sure we have a mesh attached
+
+	MArrayDataHandle hInput = block.outputArrayValue( input, &status );
+    status = hInput.jumpToElement( multiIndex );
+    MObject oInputGeom = hInput.outputValue().child( inputGeom ).asMesh();
+
+	if (oInputGeom.isNull())
+	{
+		// No mesh attached so exit node.
+		return MS::kSuccess;
+	}
+
+
+
+	// get all attributes
+	//
+	MDataHandle globalScaleData = block.inputValue(globalScale,&status);
+	CHK("Error getting globalScale data handle");
+	double globalScale = globalScaleData.asDouble();
+
+	MDataHandle resolutionData = block.inputValue(resolution,&status);
+	CHK("Error getting resolution data handle");
+	int resolution = resolutionData.asInt();
+	resolution = (int) pow(2.0,resolution);
+
+	MDataHandle sizeData = block.inputValue(size,&status);
+	CHK("Error getting size data handle");
+	double size = sizeData.asDouble();
+
+	MDataHandle windSpeedData = block.inputValue(windSpeed,&status);
+	CHK("Error getting windSpeed data handle");
+	double windSpeed = windSpeedData.asDouble();
+
+	MDataHandle waveHeightData = block.inputValue(waveHeight, &status);
+	CHK("Error getting waveHeight data handle");
+	double waveHeight = waveHeightData.asDouble();
+
+	MDataHandle shortestWaveData = block.inputValue(shortestWave,&status);
+	CHK("Error getting shortestWave data handle");
+	double shortestWave = shortestWaveData.asDouble();
+
+	MDataHandle choppinessData = block.inputValue(choppiness,&status);
+	CHK("Error getting choppiness data handle");
+	double choppiness = choppinessData.asDouble();
+
+	MDataHandle windDirectionData = block.inputValue(windDirection,&status);
+	CHK("Error getting windDirection data handle");
+	double windDirection = windDirectionData.asDouble();
+
+	MDataHandle dampReflectionsData = block.inputValue(dampReflections,&status);
+	CHK("Error getting dampReflection data handle");
+	double dampReflections = dampReflectionsData.asDouble();
+
+	MDataHandle windAlignData = block.inputValue(windAlign,&status);
+	CHK("Error getting windAlign data handle");
+	double windAlign = windAlignData.asDouble();
+
+	MDataHandle oceanDepthData = block.inputValue(oceanDepth,&status);
+	CHK("Error getting oceanDepth data handle");
+	double oceanDepth = oceanDepthData.asDouble();
+
+	MDataHandle timeData = block.inputValue(time,&status);
+	CHK("Error getting time data handle");
+	double time = timeData.asDouble();
+
+	MDataHandle seedData = block.inputValue(seed,&status);
+	CHK("Error getting seed data handle");
+	int seed = seedData.asInt();
+
+	MDataHandle interpolationData = block.inputValue(interpolation,&status);
+	CHK("Error getting interpolation data handle");
+	bool interpolation = interpolationData.asBool();
+
+	MDataHandle deformSpaceData = block.inputValue(deformSpace, &status );
+	CHK("Error getting deformation space data handle");
+	int deformSpace = deformSpaceData.asShort();	// Now get it as an SHORT
+
+	MDataHandle vertexColorsData = block.inputValue(vertexColor,&status);
+	CHK("Error getting do Vertex Colors data handle");
+	bool doVertexColors = vertexColorsData.asBool();
+
+	MDataHandle d;
+	d = block.inputValue(doJMinus, &status); bool do_jminus = d.asBool() && doVertexColors;
+	d = block.inputValue(doJPlus,  &status); bool do_jplus  = d.asBool() && doVertexColors;
+	d = block.inputValue(doEMinus, &status); bool do_eminus = d.asBool() && doVertexColors;
+	d = block.inputValue(doEPlus,  &status); bool do_eplus  = d.asBool() && doVertexColors;
+
+	doVertexColors = doVertexColors && (do_jminus || do_jplus || do_eminus || do_eplus);
+
+	bool do_jacobian = true || doVertexColors; // for vertex colors
+
+
+	// determine the envelope (this is a global scale factor)
+	//
+	MDataHandle envData = block.inputValue(envelope,&status);
+	CHK("Error getting envelope data handle");
+	float env = envData.asFloat();
+
+
+	// if we need to (re)initialize the ocean, do this
+	//
+	if ( !_ocean || _ocean_needs_rebuild )
+	{
+		if (_ocean)
+		{
+			delete _ocean;
+		}
+
+		if (_ocean_context)
+		{
+			delete _ocean_context;
+		}
+
+		_ocean = new drw::Ocean(resolution, resolution,
+			size/float(resolution), size/float(resolution),
+			windSpeed, shortestWave, 0.00001f, windDirection/180.0f * M_PI,
+			1.0f-dampReflections, windAlign, oceanDepth, seed);
+
+		_ocean_scale   = _ocean->get_height_normalize_factor();
+		_ocean_context = _ocean->new_context(true, choppiness>0, false, do_jacobian);
+
+		_ocean_needs_rebuild = false;
+	}
+
+
+	// sum up the waves at this timestep
+	//
+	_ocean->update( time, *_ocean_context, true, choppiness>0, false, do_jacobian,
+		_ocean_scale * waveHeight, choppiness);
+
+/// NOW DO THE ACTUAL  DEFORM WORK
+
+
+	// Get the blend points
+	MFnMesh inputMesh( oInputGeom );
+	MPointArray inputPoints;
+	inputMesh.getPoints(inputPoints);
+
+	int nPoints = inputPoints.length();
+
+	// some statics to speed things up
+	//
+	const float envGlobalScale = env * globalScale;
+	const float oneOverGlobalScale = 1.0/globalScale;
+
+	// jacobian arrays
+	//
+	MFloatArray jMinus, jPlus;
+	MColorArray eMinus, ePlus;
+
+	if (do_jminus) jMinus.setLength(nPoints);
+	if (do_jplus)  jPlus.setLength(nPoints);
+	if (do_eminus) eMinus.setLength(nPoints);
+	if (do_eplus)  ePlus.setLength(nPoints);
+
+
+	MPoint pt;
+	float w = 0.0f;
+	_mesh_changed = false;
+
+
+
+	if (deformSpace == 2)
+	{
+		if ( _initTangentSpace )
+		{
+			//get the tangents, normas, uvs
+			_tangents.setLength(nPoints);
+			_normals.setLength(nPoints);
+			_binormals.setLength(nPoints);
+			_uList.setLength(nPoints);
+			_vList.setLength(nPoints);
+
+			MVector vec;
+			MIntArray vertexList;
+
+			for (int i=0; i<inputMesh.numPolygons(); i++)
+			{
+				vertexList.clear();
+				inputMesh.getPolygonVertices(i,vertexList);
+				for (unsigned int j=0; j<vertexList.length(); j++) {
+					inputMesh.getFaceVertexTangent (i, vertexList[j], vec);
+					_tangents[vertexList[j]] = vec.normal();
+					inputMesh.getFaceVertexNormal (i, vertexList[j], vec);
+					_normals[vertexList[j]] = vec.normal();
+					vec = _tangents[vertexList[j]]^_normals[vertexList[j]];
+					_binormals[vertexList[j]] = vec.normal();
+					inputMesh.getPolygonUV(i,j,_uList[vertexList[j]],_vList[vertexList[j]]);
+				}
+			}
+
+			_initTangentSpace = false;
+		}
+
+// DONT know if this will work, turning off for now
+//#pragma omp parallel for
+
+		for (; !iter.isDone(); iter.next())
+		{
+			drw::EvalData evaldata;
+			// Get the input point
+			pt = iter.position();
+			// Get the painted weight value
+			w = weightValue(block, multiIndex, iter.index());
+
+			// do the waves
+			//
+			if (interpolation)
+				_ocean_context->eval2_xz(oneOverGlobalScale *_uList[iter.index()], oneOverGlobalScale *_vList[iter.index()], evaldata);
+			else
+				_ocean_context->eval_xz(oneOverGlobalScale *_uList[iter.index()], oneOverGlobalScale *_vList[iter.index()], evaldata);
+
+			// Perform the deformation
+			pt += evaldata.disp[0] * envGlobalScale * _tangents[iter.index()] * w;
+			pt += evaldata.disp[1] * envGlobalScale * _normals[iter.index()] * w;
+			pt += evaldata.disp[2] * envGlobalScale * _binormals[iter.index()] * w;
+
+			// Set the new output point
+			iter.setPosition(pt);
+
+			if (doVertexColors)
+			{
+				if (do_jminus) jMinus.set(evaldata.Jminus, iter.index());
+				if (do_jplus)  jPlus.set(evaldata.Jplus, iter.index());
+				if (do_eminus) eMinus.set(iter.index(), evaldata.Eminus[0], evaldata.Eminus[1], evaldata.Eminus[2]);
+				if (do_eplus)  ePlus.set(iter.index(), evaldata.Eplus[0],  evaldata.Eplus[1],  evaldata.Eplus[2]);
+			}
+
+		}
+
+	} // END TANGENT SPACE
+
+	else // object or worldspace
+	{
+
+// not sure if this will work disabing for now
+//#pragma omp parallel for
+		for (; !iter.isDone(); iter.next())
+		{
+			drw::EvalData evaldata;
+			// Get the input point
+			pt = iter.position();
+			// Get the painted weight value
+			w = weightValue(block, multiIndex, iter.index());
+
+
+			if (deformSpace == 0)
+				pt *= worldSpace;
+
+			// do the waves
+			//
+			if (interpolation)
+				_ocean_context->eval2_xz(oneOverGlobalScale *pt.x,oneOverGlobalScale *pt.z, evaldata);
+			else
+				_ocean_context->eval_xz(oneOverGlobalScale *pt.x,oneOverGlobalScale *pt.z, evaldata);
+
+			pt.x += evaldata.disp[0] * envGlobalScale * w;
+			pt.y += evaldata.disp[1] * envGlobalScale * w;
+			pt.z += evaldata.disp[2] * envGlobalScale * w ;
+
+			if (doVertexColors)
+			{
+				if (do_jminus) jMinus.set(evaldata.Jminus, iter.index());
+				if (do_jplus)  jPlus.set(evaldata.Jplus, iter.index());
+				if (do_eminus) eMinus.set(iter.index(), evaldata.Eminus[0], evaldata.Eminus[1], evaldata.Eminus[2]);
+				if (do_eplus)  ePlus.set(iter.index(), evaldata.Eplus[0],  evaldata.Eplus[1],  evaldata.Eplus[2]);
+			}
+
+			if (deformSpace == 0)
+				pt *= worldSpace.inverse();
+
+			// Set the new output point
+			iter.setPosition(pt);
+
+		}
+
+		// write vertex colors (per-face vertex method)
+		//
+		if (doVertexColors)
+		{
+			MColorArray	jm, jp, em, ep;
+			MIntArray	indices;
+			unsigned	nth=0;
+
+			MItMeshPolygon pit(oInputGeom, &status);
+			CHK("couldn't get mesh poly iterator");
+
+			for( ;  !pit.isDone();  pit.next() )
+			{
+				for( unsigned v=0, vc=pit.polygonVertexCount();  v<vc;  ++v, ++nth )
+				{
+					unsigned int p = pit.vertexIndex(v);
+
+					if (do_jminus) jm.append(jMinus[p], jMinus[p], jMinus[p]);
+					if (do_jplus)  jp.append(jPlus[p],  jPlus[p],  jPlus[p]);
+					if (do_eminus) em.append(eMinus[p]);
+					if (do_eplus)  ep.append(ePlus[p]);
+
+					indices.append(nth);
+				}
+			}
+
+			MString cset;
+
+			if (do_jminus)
+			{
+				cset = "jMinus";
+				status = inputMesh.createColorSetDataMesh(cset);
+				inputMesh.setColors(jm, &cset);
+				inputMesh.assignColors(indices, &cset);
+			}
+
+			if (do_jplus)
+			{
+				cset = "jPlus";
+				status = inputMesh.createColorSetDataMesh(cset);
+				inputMesh.setColors(jp, &cset);
+				inputMesh.assignColors(indices, &cset);
+			}
+
+			if (do_eminus)
+			{
+				cset = "eMinus";
+				status = inputMesh.createColorSetDataMesh(cset);
+				inputMesh.setColors(em, &cset);
+				inputMesh.assignColors(indices, &cset);
+			}
+
+			if (do_eplus)
+			{
+				cset = "ePlus";
+				status = inputMesh.createColorSetDataMesh(cset);
+				inputMesh.setColors(ep, &cset);
+				inputMesh.assignColors(indices, &cset);
+			}
+		}
+	}
+
+
+	/*
+	// error handling
+	//
+	catch( char const *e )
+	{
+		MGlobal::displayWarning(FN_dnode+MString(e));
+	}
+
+	catch( std::runtime_error & e )
+	{
+		MGlobal::displayWarning(FN_dnode+MString(e.what()));
+	}
+
+	catch(...)
+	{
+		MGlobal::displayError(FN_dnode+"unknown error occurred");
+		throw;
+	}
+	*/
+
+	return status;
+#undef CHK
+
 }
-*/
 
 
 
+/*
 MStatus hotOceanDeformer::compute( const MPlug & plug, MDataBlock & block )
 {
 #define CHK(msg) if ( MS::kSuccess!=status ) { throw(msg); }
@@ -656,6 +1020,7 @@ MStatus hotOceanDeformer::compute( const MPlug & plug, MDataBlock & block )
 	return status;
 #undef CHK
 }
+*/
 
 
 

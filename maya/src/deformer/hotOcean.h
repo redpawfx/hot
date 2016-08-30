@@ -66,13 +66,11 @@ public:
 	static MStatus		initialize();
 
 	virtual void		postConstructor();
-	virtual MStatus		accessoryNodeSetup( MDagModifier & );
-	virtual MStatus		setDependentsDirty( const MPlug &, MPlugArray & );
-	virtual MStatus		compute( const MPlug &, MDataBlock & );
+	virtual MStatus		accessoryNodeSetup( MDagModifier& );
+	virtual MStatus		setDependentsDirty( const MPlug&, MPlugArray& );
+	//virtual MStatus		compute( const MPlug&, MDataBlock& );
+	virtual MStatus		deform( MDataBlock&, MItGeometry&, const MMatrix&, unsigned int );
 
-/*
-	virtual MStatus		deform( MDataBlock &, MItGeometry &, const MMatrix &, unsigned int );
-*/
 
 public:
 	static MObject globalScale;
