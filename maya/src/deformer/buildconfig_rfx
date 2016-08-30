@@ -8,14 +8,13 @@
 #//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 
-CC		= /usr/local/gcc-4.1.2/bin/gcc412
-C++		= /usr/local/gcc-4.1.2/bin/g++412
-#CC		= gcc
-#C++	= g++
+#CC		= /usr/local/gcc-4.1.2/bin/gcc412
+#C++		= /usr/local/gcc-4.1.2/bin/g++412
+CC		= gcc
+C++	= g++
 
 
-
-INSTALLDIR = /redpawFX/dev/fume/$(FUMELIB_VERSION)/$(MAYA_VERSION)
+INSTALLDIR = $(MAYA_VERSION)/redpawFX/maya/plugins/$(MAYA_VERSION)
 
 # When the following line is present, the linking of plugins will
 # occur much faster.  If you link transitively (the default) then
@@ -29,13 +28,12 @@ DEBUGFLAGS = -DDEBUG
 CFLAGS	= $(DEBUGFLAGS) -DBits64_ -m64 -DUNIX -D_BOOL -DLINUX -DFUNCPROTO -D_GNU_SOURCE -DLINUX_64 -fPIC -DBUILD_SD \
 		-fno-strict-aliasing -DREQUIRE_IOSTREAM -Wno-deprecated -O3 -Wall \
 		-Wno-multichar -Wno-comment -Wno-sign-compare -funsigned-char \
-		-Wno-reorder -fno-gnu-keywords -ftemplate-depth-25 -pthread -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES
+		-Wno-reorder -fno-gnu-keywords -ftemplate-depth-25 -pthread -fopenmp -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES
 
 C++FLAGS	=  $(CFLAGS) $(WARNFLAGS) -Wno-deprecated -fno-gnu-keywords
 
 
-INCLUDES	= -I. -I.. -I$(MAYA_LOCATION)/include  -I/usr/X11R6/include -I/usr/include -I/redpawFX/dev/gitHub/redpawFX/hot/3rdparty/linux/include -I/usr/include/OpenEXR  -I/usr/include/CC  -I/usr/lib/gcc/x86_64-redhat-linux/4.6.3/include
-
+INCLUDES	= -I. -I.. -I$(MAYA_LOCATION)/include  -I/usr/X11R6/include -I/usr/include -I/redpawFX/dev/gitHub/redpawFX/hot/3rdparty/linux/include -I/usr/include/OpenEXR  -I/usr/include/CC 
 
 # -Bsymbolic binds references to global symbols within the library.
 # This avoids symbol clashes in other shared libraries but forces
@@ -43,7 +41,7 @@ INCLUDES	= -I. -I.. -I$(MAYA_LOCATION)/include  -I/usr/X11R6/include -I/usr/incl
 
 LD			= $(C++) $(NO_TRANS_LINK) $(C++FLAGS) -Wl,-Bsymbolic -shared
 
-LIBS		=  -L/usr/local/lib -L/usr/lib/gcc/x86_64-redhat-linux/4.6.3 -L/redpawFX/dev/gitHub/redpawFX/hot/3rdparty/linux/lib -L$(MAYA_LOCATION)/lib -lblitz -lfftw3f -fftw3f_threads -lImath -lgomp -lOpenMaya -lOpenMayaUI -lFoundation -lOpenMayaFX -lOpenMayaAnim
+LIBS		=  -L/usr/local/lib  -L/redpawFX/dev/gitHub/redpawFX/hot/3rdparty/linux/lib -L$(MAYA_LOCATION)/lib -lblitz -lfftw3f -lfftw3f_threads -lImath -lgomp -lOpenMaya -lOpenMayaUI -lFoundation -lOpenMayaFX -lOpenMayaAnim
 LIBS_GL_EXTRA = -lGL -lGLU
 
 EXT	= so

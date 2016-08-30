@@ -3,7 +3,7 @@
 		@file		hotOcean.h
 		@since		2012-10-26
 
-		@author		Nico Rehberg, Imre Tuske, Szabolcs Horvatth
+		@author		Nico Rehberg, Imre Tuske, Szabolcs Horvatth, John Cassella (mods) 
 
 		@brief		Maya deformer to displace a surface using Houdini Ocean Toolkit (headers).
 
