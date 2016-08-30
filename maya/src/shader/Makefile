@@ -6,7 +6,8 @@ LINK = /usr/local/gcc-4.1.2/bin/g++412
 
 ##########################
 ## CUSTOMIZATION  here
-DEVKIT = /usr/autodesk/maya2012-x64/devkit/mentalray/include
+#DEVKIT = /usr/autodesk/maya2012-x64/devkit/mentalray/include
+DEVKIT = /usr/autodesk/mentalrayForMaya2014/devkit/include
 BUILDDIR = ./
 
 ########################

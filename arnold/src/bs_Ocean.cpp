@@ -108,8 +108,8 @@ shader_evaluate
    	bool usePref = SetRefererencePoints(sg, tmpPts);
     
     AtVector disp;
-    AtFloat jminus;
-    AtFloat jplus;
+    float jminus;
+    float jplus;
     AtVector eminus;
     AtVector eplus;
     

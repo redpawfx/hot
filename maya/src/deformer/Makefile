@@ -1,7 +1,7 @@
 #
 # Include platform specific build settings
 #
-include ./buildconfig_rfx
+include ./buildconfig_luma
 
 
 .SUFFIXES: .cpp .cc .o .so .c .bundle

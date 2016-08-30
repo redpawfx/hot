@@ -22,7 +22,7 @@ EXT	= so
 
 OUTPUT = ./
 
-RELEASE = /Volumes/sv-dev01/devRepo/johnc/arnold/shaders/published/4.0.12/Linux-x86_64
+RELEASE = /Volumes/sv-dev01/devRepo/johnc/arnold/shaders/published/4.1.3/Linux-x86_64
 
 LD			= $(C++)
 

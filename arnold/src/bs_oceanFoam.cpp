@@ -89,7 +89,7 @@ shader_evaluate
         
     AtPoint Pdisp, Porig;
     
-    AtFloat foamMask;
+    float foamMask;
     AtVector eplus, eminus;
    
     

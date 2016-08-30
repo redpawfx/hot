@@ -12,7 +12,10 @@
 *.la
 *.a
 
-*.dep
+*.kdev4
+.cvsignore
+.depend
+.dep
 
 tmp/
 backup/*
